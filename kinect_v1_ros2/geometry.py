@@ -1,4 +1,5 @@
 """Camera model, ROS message helpers and point cloud – numpy only, unit-tested."""
+
 import numpy as np
 
 WIDTH, HEIGHT = 640, 480
@@ -11,7 +12,9 @@ CX, CY = 319.5, 239.5
 def camera_info_fields(width=WIDTH, height=HEIGHT, fx=FX, fy=FY, cx=CX, cy=CY):
     """Values for sensor_msgs/CameraInfo (plumb bob, no distortion)."""
     return {
-        "width": width, "height": height, "distortion_model": "plumb_bob",
+        "width": width,
+        "height": height,
+        "distortion_model": "plumb_bob",
         "d": [0.0] * 5,
         "k": [fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0],
         "r": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
@@ -23,8 +26,14 @@ def image_fields(array, encoding):
     """Values for sensor_msgs/Image from a numpy array (rgb8, mono8, 16UC1)."""
     array = np.ascontiguousarray(array)
     height, width = array.shape[:2]
-    return {"height": height, "width": width, "encoding": encoding, "is_bigendian": 0,
-            "step": array.strides[0], "data": array.tobytes()}
+    return {
+        "height": height,
+        "width": width,
+        "encoding": encoding,
+        "is_bigendian": 0,
+        "step": array.strides[0],
+        "data": array.tobytes(),
+    }
 
 
 def raw_to_mm(raw):
@@ -43,7 +52,7 @@ def points_xyz(depth_mm, step=4, fx=FX, fy=FY, cx=CX, cy=CY, rgb=None):
     With rgb (H x W x 3, registered) a packed float32 'rgb' column is added.
     """
     d = depth_mm[::step, ::step].astype(np.float32) / 1000.0
-    v, u = np.mgrid[0:depth_mm.shape[0]:step, 0:depth_mm.shape[1]:step]
+    v, u = np.mgrid[0 : depth_mm.shape[0] : step, 0 : depth_mm.shape[1] : step]
     valid = d > 0
     z = d[valid]
     x = (u[valid] - cx) * z / fx

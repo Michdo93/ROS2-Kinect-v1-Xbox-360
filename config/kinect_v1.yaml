@@ -7,7 +7,7 @@
     fps: 30.0                   # simulation only – the hardware always runs at 30 Hz
     video_mode: rgb             # rgb | ir (switch at runtime with ros2 param set)
     tilt_deg: 0.0               # -27 ... 27
-    led: green                  # off | green | red | yellow | blink_green | blink_red_yellow
+    led: green                  # off, green, red, yellow, blink_green, blink_red_yellow
     cloud_step: 4               # every 4th pixel: 160 x 120 points
     cloud_every: 3              # point cloud every 3rd depth frame (10 Hz)
     cloud_color: true           # rgb field from the registered RGB image

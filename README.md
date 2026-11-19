@@ -77,8 +77,9 @@ Parameters (`config/kinect_v1.yaml`):
 With `reliable: false` subscribers must use best-effort QoS as well
 (`qos_profile_sensor_data`); RViz and `rqt_image_view` can switch it in their settings.
 
-Several Kinects: start the launch file once per device with `namespace:=kinect_wohnzimmer`,
-`device_index` and `frame_prefix` set accordingly.
+Several Kinects: start the launch file once per device, e.g.
+`namespace:=kinect_flur device_index:=1` – the frames are named after the namespace
+(`kinect_flur_link`, `kinect_flur_rgb_optical_frame`).
 
 ## Tests
 

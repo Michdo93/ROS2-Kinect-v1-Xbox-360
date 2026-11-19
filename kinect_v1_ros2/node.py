@@ -18,6 +18,7 @@ Parameters that can be changed while running (ros2 param set /kinect_v1 ...)
 
 simulate:=true produces a synthetic scene with the same topics – no Kinect needed.
 """
+
 import queue
 import threading
 import time
@@ -72,8 +73,8 @@ class KinectV1Node(Node):
 
         self.optical = f"{self.frame_prefix}_rgb_optical_frame"
         self._static_tf()
-        self.pending = queue.Queue()     # parameter changes for the capture thread
-        self.last_rgb = None             # for the coloured point cloud
+        self.pending = queue.Queue()  # parameter changes for the capture thread
+        self.last_rgb = None  # for the coloured point cloud
         self.frames = 0
         self.stats = {"video": 0, "depth": 0, "audio": 0}
         self.running = True
@@ -92,7 +93,9 @@ class KinectV1Node(Node):
         self.create_timer(5.0, self._log_stats)
         self.get_logger().info(
             f"Kinect v1 {'(simulated)' if self.simulate else f'#{self.device_index}'}: "
-            f"video {self.video_mode}, depth registered, point cloud every {self.cloud_every}. frame")
+            f"video {self.video_mode}, depth registered, "
+            f"point cloud every {self.cloud_every}. frame"
+        )
 
     # ------------------------------------------------------------------ parameters
     def _on_parameters(self, params):
@@ -102,7 +105,9 @@ class KinectV1Node(Node):
             if p.name == "tilt_deg" and not -27.0 <= float(p.value) <= 27.0:
                 return SetParametersResult(successful=False, reason="tilt_deg: -27 ... 27")
             if p.name == "led" and p.value not in LEDS:
-                return SetParametersResult(successful=False, reason=f"led: {', '.join(LEDS)}")
+                return SetParametersResult(
+                    successful=False, reason=f"led: {', '.join(LEDS)}"
+                )
         for p in params:
             if p.name in ("video_mode", "tilt_deg", "led"):
                 setattr(self, p.name, p.value)
@@ -141,41 +146,62 @@ class KinectV1Node(Node):
 
     def publish_depth(self, depth_mm):
         stamp = self.get_clock().now().to_msg()
-        self.pub_depth.publish(self._header(Image(**image_fields(depth_mm, "16UC1")), stamp))
+        self.pub_depth.publish(
+            self._header(Image(**image_fields(depth_mm, "16UC1")), stamp)
+        )
         self.pub_depth_info.publish(self._header(CameraInfo(**camera_info_fields()), stamp))
         self.stats["depth"] += 1
         self.frames += 1
-        if self.cloud_every > 0 and self.frames % self.cloud_every == 0 \
-                and self.pub_cloud.get_subscription_count() > 0:  # only when someone listens
+        if (
+            self.cloud_every > 0
+            and self.frames % self.cloud_every == 0
+            and self.pub_cloud.get_subscription_count() > 0
+        ):  # only when someone listens
             rgb = self.last_rgb if self.cloud_color and self.video_mode == "rgb" else None
-            self.pub_cloud.publish(self._cloud(points_xyz(depth_mm, self.cloud_step, rgb=rgb),
-                                               stamp))
+            self.pub_cloud.publish(
+                self._cloud(points_xyz(depth_mm, self.cloud_step, rgb=rgb), stamp)
+            )
 
     def _cloud(self, pts, stamp):
-        fields = [PointField(name=n, offset=4 * i, datatype=PointField.FLOAT32, count=1)
-                  for i, n in enumerate("xyz")]
+        fields = [
+            PointField(name=n, offset=4 * i, datatype=PointField.FLOAT32, count=1)
+            for i, n in enumerate("xyz")
+        ]
         if pts.shape[1] == 4:
-            fields.append(PointField(name="rgb", offset=12, datatype=PointField.FLOAT32,
-                                     count=1))
-        msg = PointCloud2(height=1, width=len(pts), fields=fields, is_bigendian=False,
-                          point_step=4 * pts.shape[1], row_step=4 * pts.shape[1] * len(pts),
-                          is_dense=True, data=np.ascontiguousarray(pts).tobytes())
+            fields.append(
+                PointField(name="rgb", offset=12, datatype=PointField.FLOAT32, count=1)
+            )
+        msg = PointCloud2(
+            height=1,
+            width=len(pts),
+            fields=fields,
+            is_bigendian=False,
+            point_step=4 * pts.shape[1],
+            row_step=4 * pts.shape[1] * len(pts),
+            is_dense=True,
+            data=np.ascontiguousarray(pts).tobytes(),
+        )
         return self._header(msg, stamp)
 
     def publish_motion(self, accel, tilt):
         imu = Imu()
         imu.header.stamp = self.get_clock().now().to_msg()
         imu.header.frame_id = f"{self.frame_prefix}_link"
-        imu.orientation_covariance[0] = -1.0          # no orientation
-        imu.angular_velocity_covariance[0] = -1.0     # no gyroscope
-        imu.linear_acceleration.x, imu.linear_acceleration.y, imu.linear_acceleration.z = accel
+        imu.orientation_covariance[0] = -1.0  # no orientation
+        imu.angular_velocity_covariance[0] = -1.0  # no gyroscope
+        imu.linear_acceleration.x, imu.linear_acceleration.y, imu.linear_acceleration.z = (
+            accel
+        )
         self.pub_accel.publish(imu)
         self.pub_tilt.publish(Float64(data=float(tilt)))
 
     def publish_audio(self, samples, rate=16000):
         msg = Int16MultiArray(data=samples.ravel().tolist())
-        msg.layout.dim = [MultiArrayDimension(label=f"samples@{rate}Hz", size=samples.size,
-                                              stride=samples.size)]
+        msg.layout.dim = [
+            MultiArrayDimension(
+                label=f"samples@{rate}Hz", size=samples.size, stride=samples.size
+            )
+        ]
         self.pub_audio.publish(msg)
         self.stats["audio"] += 1
 
@@ -211,7 +237,9 @@ class KinectV1Node(Node):
         def depth(_dev, frame, _ts):
             # DEPTH_REGISTERED delivers millimetres aligned to the RGB image, otherwise
             # the 11-bit raw disparity is converted (not aligned to the RGB image)
-            self.publish_depth(frame.astype(np.uint16) if registered is not None else raw_to_mm(frame))
+            self.publish_depth(
+                frame.astype(np.uint16) if registered is not None else raw_to_mm(frame)
+            )
 
         def body(dev, _ctx):
             if not self.running or not rclpy.ok():
@@ -243,22 +271,35 @@ class KinectV1Node(Node):
                 state["last_tilt"] = now
 
         try:
-            dev = None if self.device_index == 0 else \
-                freenect.open_device(freenect.init(), self.device_index)
+            dev = (
+                None
+                if self.device_index == 0
+                else freenect.open_device(freenect.init(), self.device_index)
+            )
             freenect.runloop(depth=depth, video=video, body=body, dev=dev)
         except Exception as e:  # no device, USB error ...
             if self.running:
                 self.get_logger().error(f"libfreenect: {e}")
 
     def _start_audio(self):
-        """The Kinect microphones appear as ALSA device once the audio firmware is loaded."""
+        """The Kinect microphones appear as ALSA device once the audio firmware is loaded
+        (libfreenect fwfetcher.py / kinect_upload_fw)."""
         try:
             import sounddevice as sd
-            device = int(self.audio_device) if self.audio_device.isdigit() else \
-                (self.audio_device or None)
+
+            device = (
+                int(self.audio_device)
+                if self.audio_device.isdigit()
+                else (self.audio_device or None)
+            )
             self.audio_stream = sd.InputStream(
-                device=device, samplerate=16000, channels=1, dtype="int16", blocksize=1600,
-                callback=lambda data, *_: self.publish_audio(data.copy()))
+                device=device,
+                samplerate=16000,
+                channels=1,
+                dtype="int16",
+                blocksize=1600,
+                callback=lambda data, *_: self.publish_audio(data.copy()),
+            )
             self.audio_stream.start()
         except Exception as e:
             self.get_logger().warn(f"audio disabled: {e}")
