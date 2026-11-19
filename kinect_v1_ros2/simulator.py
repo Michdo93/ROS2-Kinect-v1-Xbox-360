@@ -33,7 +33,7 @@ class Simulator:
         return d
 
     def rgb(self, t):
-        img = np.stack([(self.xx + int(t * 60)) % 256, self.yy * 255 // (HEIGHT - 1),
+        img = np.stack([self.xx * 255 // (WIDTH - 1), self.yy * 255 // (HEIGHT - 1),
                         np.full_like(self.xx, 128)], axis=-1).astype(np.uint8)
         cx, _, hand = self.person(t)
         img[140:440, max(cx - 55, 0):cx + 55] = (40, 90, 200)
